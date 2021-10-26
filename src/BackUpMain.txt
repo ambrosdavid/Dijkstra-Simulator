@@ -1,0 +1,436 @@
+
+/**
+//============================================================================
+// Name        : VisualGraphs.cpp
+// Author      : 
+// Version     :
+// Copyright   : Your copyright notice
+// Description : Hello World in C++, Ansi-style
+//============================================================================
+
+#include <iostream>
+#include<bits/stdc++.h>
+#include <SFML/Graphics.hpp>
+#include <math.h>
+#include <windows.h>
+#include <thread>
+#include <chrono>
+using namespace std;
+using namespace sf;
+# define INF 0x3f3f3f3f
+
+// iPair ==>  Integer Pair
+typedef pair<int, int> iPair;
+
+
+class sfLine : public sf::Drawable
+{
+public:
+    sfLine(const sf::Vector2f& point1, const sf::Vector2f& point2):
+        /*color(sf::Color::Yellow),*/ thickness(2.f)
+    {
+        sf::Vector2f direction = point2 - point1;
+        sf::Vector2f unitDirection = direction/std::sqrt(direction.x*direction.x+direction.y*direction.y);
+        sf::Vector2f unitPerpendicular(-unitDirection.y,unitDirection.x);
+
+        sf::Vector2f offset = (thickness/2.f)*unitPerpendicular;
+
+        vertices[0].position = point1 + offset;
+        vertices[1].position = point2 + offset;
+        vertices[2].position = point2 - offset;
+        vertices[3].position = point1 - offset;
+
+        for (int i=0; i<4; ++i)
+            vertices[i].color = color;
+    }
+
+    void draw(sf::RenderTarget &target, sf::RenderStates states) const
+    {
+        target.draw(vertices,4,sf::Quads);
+    }
+    void setColor(sf::Color col){
+    	color=col;
+    }
+
+private:
+    sf::Vertex vertices[4];
+    float thickness;
+    sf::Color color;
+};
+
+class GraficNode{
+	public:
+		string _nodeName;
+		sf::CircleShape* shape;
+		sf::Text* text;
+		GraficNode* prevNode;
+		GraficNode(string nodeName);
+		void setPosition(float x, float y);
+};
+
+GraficNode::GraficNode(string nodeName){
+			prevNode=NULL;
+			_nodeName = nodeName;
+			shape = new sf::CircleShape(20.f);
+			(*shape).setPointCount(500);
+			(*shape).setFillColor(sf::Color::Black);
+			(*shape).setOrigin((*shape).getLocalBounds().width/2, (*shape).getLocalBounds().height/2);
+			(*shape).setPosition(300.f, 300.f);
+
+
+			text=new sf::Text;
+			sf::Font font;//Amatic-Bold.ttf
+			if (!font.loadFromFile("src/res/Amatic-Bold.ttf"))
+			{
+				std::cout << "Crasha font!! " << std::endl;
+			}
+			// select the font
+			(*text).setFont(font); // font is a sf::Font
+			// set the string to display
+			(*text).setString(_nodeName);
+			// set the character size
+			(*text).setCharacterSize(24); // in pixels, not points!
+			// set the color
+			(*text).setFillColor(sf::Color::White);
+			// set the text style
+			(*text).setStyle(sf::Text::Bold | sf::Text::Underlined);
+			(*text).setOrigin(((*text).getLocalBounds().width/2), (*text).getLocalBounds().height/2);
+			(*text).setPosition(300.f, 300.f);
+		}
+
+void GraficNode::setPosition(float x, float y){
+			(*text).setPosition(x, y);
+			(*shape).setPosition(x, y);
+		}
+
+
+double toRadians(double degree)
+{
+    double pi = 3.14159265359;
+    return (degree * (pi / 180));
+}
+
+void getPoints(int x0,int y0,int r,int noOfDividingPoints, int (x)[], int (y)[])
+{
+
+   double angle = 0;
+
+
+
+   for(int i = 0 ; i < noOfDividingPoints  ;i++)
+   {
+       angle = i * (360/noOfDividingPoints);
+
+       x[i] = (int) (x0 + r * cos(toRadians(angle)));
+       y[i] = (int) (y0 + r * sin(toRadians(angle)));
+
+   }
+
+}
+
+// This class represents a directed graph using
+// adjacency list representation
+class Graph
+{
+
+
+public:
+	int V;    // No. of vertices
+
+	    // In a weighted graph, we need to store vertex
+	    // and weight pair for every edge
+	list< pair<int, int> > *adj;
+    Graph(int V);  // Constructor
+
+    // function to add an edge to graph
+    void addEdge(int u, int v, int w);
+
+    // prints shortest path from s
+    void shortestPath(int s);
+};
+
+// Allocates memory for adjacency list
+Graph::Graph(int V)
+{
+    this->V = V;
+    adj = new list<iPair> [V];
+}
+
+int matAdj[9][9];
+vector<GraficNode> nodi;
+void Graph::addEdge(int u, int v, int w)
+{
+    adj[u].push_back(make_pair(v, w));
+    adj[v].push_back(make_pair(u, w));
+    matAdj[u][v]=w;
+}
+
+
+// Prints shortest paths from src to all other vertices
+void Graph::shortestPath(int src)
+{
+    // Create a priority queue to store vertices that
+    // are being preprocessed. This is weird syntax in C++.
+    // Refer below link for details of this syntax
+    // https://www.geeksforgeeks.org/implement-min-heap-using-stl/
+    priority_queue< iPair, vector <iPair> , greater<iPair> > pq;
+
+    // Create a vector for distances and initialize all
+    // distances as infinite (INF)
+    vector<int> dist(V, INF);
+
+    // Insert source itself in priority queue and initialize
+    // its distance as 0.
+    pq.push(make_pair(0, src));
+    dist[src] = 0;
+
+    /* Looping till priority queue becomes empty (or all
+      distances are not finalized) */
+    while (!pq.empty())
+    {
+        // The first vertex in pair is the minimum distance
+        // vertex, extract it from priority queue.
+        // vertex label is stored in second of pair (it
+        // has to be done this way to keep the vertices
+        // sorted distance (distance must be first item
+        // in pair)
+        int u = pq.top().second;
+        pq.pop();
+
+        // 'i' is used to get all adjacent vertices of a vertex
+        list< pair<int, int> >::iterator i;
+        for (i = adj[u].begin(); i != adj[u].end(); ++i)
+        {
+            // Get vertex label and weight of current adjacent
+            // of u.
+            int v = (*i).first;
+            int weight = (*i).second;
+
+            //  If there is shorted path to v through u.
+            if (dist[v] > dist[u] + weight)
+            {
+                // Updating distance of v
+                dist[v] = dist[u] + weight;
+                pq.push(make_pair(dist[v], v));
+                nodi[v].prevNode=&(nodi[u]);
+                Sleep(1000);
+            }
+        }
+    }
+
+    // Print shortest distances stored in dist[]
+    printf("Vertex   Distance from Source\n");
+    for (int i = 0; i < V; ++i)
+        printf("%d \t\t %d\n", i, dist[i]);
+}
+int V = 9;
+Graph g(V);
+
+DWORD WINAPI ThreadFunc(void *data) {
+	g.shortestPath(0);
+  // Do stuff.  This will be the first function called on the new thread.
+  // When this function returns, the thread goes away.  See MSDN for more details.
+  return 0;
+}
+
+
+void execDijkstra(){
+	CreateThread(NULL, 0, ThreadFunc, NULL, 0, NULL);
+}
+// Driver program to test methods of graph class
+int main()
+{
+    // create the graph given in above fugure
+
+
+
+    for(int i=0; i<V; i++){
+    	GraficNode gN(to_string(i));
+		nodi.push_back(gN);
+    }
+
+
+	for(int i=0; i<V; i++){
+		for(int j=0; j<V; j++)
+			matAdj[i][j]=-1;
+	}
+	g.addEdge(0, 1, 4);
+    g.addEdge(0, 7, 8);
+    g.addEdge(1, 2, 8);
+    g.addEdge(1, 7, 11);
+    g.addEdge(2, 3, 7);
+    g.addEdge(2, 8, 2);
+    g.addEdge(2, 5, 4);
+    g.addEdge(3, 4, 9);
+    g.addEdge(3, 5, 14);
+    g.addEdge(4, 5, 10);
+    g.addEdge(5, 6, 2);
+    g.addEdge(6, 7, 1);
+    g.addEdge(6, 8, 6);
+    g.addEdge(7, 8, 7);
+
+
+
+    int *x = new int[V];
+    int *y = new int[V];
+
+    getPoints(300, 300, 150, V, x, y);
+
+
+	sf::Font font;//Amatic-Bold.ttf
+	if (!font.loadFromFile("src/res/Amatic-Bold.ttf"))
+	{
+	    // error...
+	}
+    for(int i=0; i<V; i++){
+    	nodi[i].setPosition(x[i], y[i]);
+    	nodi[i].text->setFont(font);
+    }
+
+
+
+
+    sf::RenderWindow window(sf::VideoMode(600,600), "Hello World");
+	sf::RectangleShape buttonShape(sf::Vector2f(100, 50));
+	buttonShape.setFillColor(sf::Color::Black);
+	buttonShape.setOrigin(buttonShape.getLocalBounds().width/2, buttonShape.getLocalBounds().height/2);
+	buttonShape.setPosition(50.f, 50.f);
+
+
+	sf::Text calculateDijkstra;
+	calculateDijkstra.setFont(font); // font is a sf::Font
+	calculateDijkstra.setString("Exec Dijkstra");
+	calculateDijkstra.setCharacterSize(24); // in pixels, not points!
+	calculateDijkstra.setFillColor(sf::Color::White);
+	calculateDijkstra.setStyle(sf::Text::Bold | sf::Text::Underlined);
+	calculateDijkstra.setOrigin((calculateDijkstra.getLocalBounds().width/2), calculateDijkstra.getLocalBounds().height/2);
+	calculateDijkstra.setPosition(50.f, 50.f);
+
+
+
+
+	int leftButton=0;
+
+        while (window.isOpen())
+        {
+        	//break;
+            sf::Event event;
+            while (window.pollEvent(event))
+            {
+                if (event.type == sf::Event::Closed)
+                    window.close();
+                if (event.type == sf::Event::MouseButtonPressed)
+                {
+                    if (event.mouseButton.button == sf::Mouse::Left)
+                    {
+                    	leftButton=1;
+                    }
+                	if(buttonShape.getGlobalBounds().contains(event.mouseMove.x, event.mouseMove.y)){
+                		for(int i=0; i<V; i++){
+                			nodi[i].prevNode=NULL;
+                		}
+                		execDijkstra();
+                	}
+
+                }
+                if (event.type == sf::Event::MouseButtonReleased)
+                {
+                    if (event.mouseButton.button == sf::Mouse::Left)
+                    {
+                    	leftButton=0;
+                    }
+
+                }
+                if (event.type == sf::Event::MouseMoved)
+                {
+                    std::cout << "new mouse x: " << event.mouseMove.x << std::endl;
+                    std::cout << "new mouse y: " << event.mouseMove.y << std::endl;
+                    if(leftButton){
+                    	for(int i=0; i<V; i++){
+                    		if( (*(nodi[i].shape)).getGlobalBounds().contains(event.mouseMove.x, event.mouseMove.y)){
+                    			nodi[i].setPosition(event.mouseMove.x, event.mouseMove.y);
+
+                    		}
+
+                    	}
+
+                    }
+                }
+            }
+
+            window.clear(sf::Color::White);
+
+        	for(int i=0; i<V;i++){
+        		for(int j=0; j<V; j++){
+        			if(matAdj[i][j]!=-1){
+						sf::Vertex line1[] =
+						{
+							sf::Vertex(nodi[i].shape->getPosition(), sf::Color::Black),
+							sf::Vertex(nodi[j].shape->getPosition(), sf::Color::Black)
+						};
+						sfLine l1(nodi[i].shape->getPosition(), nodi[j].shape->getPosition());
+						l1.setColor(Color::Black);
+
+						window.draw(line1, 2, sf::Lines);
+						window.draw(l1);
+
+						 sf::Text text;
+						text.setFont(font);
+						string sVal=to_string(matAdj[i][j]);
+						text.setString(sVal);
+						text.setCharacterSize(24);
+						text.setFillColor(sf::Color::Black);
+						text.setStyle(sf::Text::Bold);
+						text.setOrigin((text.getLocalBounds().width/2), text.getLocalBounds().height/2);
+						float x1=nodi[i].shape->getPosition().x;
+						float x2=nodi[j].shape->getPosition().x;
+						float y1=nodi[i].shape->getPosition().y;
+						float y2=nodi[j].shape->getPosition().y;
+						text.setPosition(min(x1,x2)+((max(x1,x2)-min(x1,x2))/2)+10, min(y1,y2)+((max(y1,y2)-min(y1,y2))/2)+10);
+						window.draw(text);
+        			}
+        		}
+        	}
+        	for(int i=0; i<V;i++){
+        		if(nodi[i].prevNode != NULL){
+					sf::Vertex line1[] =
+					{
+						sf::Vertex(nodi[i].shape->getPosition(), sf::Color::Green),
+						sf::Vertex(nodi[i].prevNode->shape->getPosition(), sf::Color::Green)
+					};
+					sf::Vertex line2[] =
+					{
+						sf::Vertex(Vector2f(nodi[i].shape->getPosition().x+1,nodi[i].shape->getPosition().y+1) , sf::Color::Green),
+						sf::Vertex(Vector2f(nodi[i].prevNode->shape->getPosition().x+1,nodi[i].prevNode->shape->getPosition().y+1), sf::Color::Green)
+					};
+					//sfLine l2(nodi[i].shape->getPosition(), nodi[i].prevNode->shape->getPosition());
+					//l2.setColor(Color::Yellow);
+
+					 window.draw(line1, 2, sf::Lines);
+					 window.draw(line2, 2, sf::Lines);
+
+					// window.draw(l2);
+        		}
+        	}
+
+            for(int i=0; i<V; i++){
+                	window.draw( *(nodi[i].shape));
+                	window.draw( *(nodi[i].text));
+                }
+
+            window.draw(buttonShape);
+            window.draw(calculateDijkstra);
+
+            window.display();
+        }
+
+        return 0;
+}
+
+
+**/
+
+
+
+
+

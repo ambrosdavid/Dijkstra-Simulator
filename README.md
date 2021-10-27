@@ -33,15 +33,15 @@
 <span><img src="HowItSpawns.PNG" alt="drawing" width="400"/> <img src="gifDemo.gif" alt="drawing" width="400"/></span>
 
 This is one of my first projects in C ++, realized to put into practice the Dijktra algorithm, which takes in input a weighted Graph (in this case not oriented) and returns the shortest path tree. 
-As source node is used the node 0, but obviously you can change the source at any time ;)
+Node 0 is used as the source node, but of course you can change the source at any time ;)
 
 How it works:
 * Firstly, it takes as input a set of nodes and weights
-* Once started you can reposition the nodes inside the window area dragging them across the screen with the mouse cursor(hold left click)
-* When you are happy with the graph apparence, you can go on and right click on "Exec Dijkstra" Button
+* Once started you can reposition the nodes within the window area dragging them across the screen with the mouse cursor(hold left click)
+* When you are happy with the look of the graph, you can go ahead and right click on "Exec Dijkstra" Button
 
 You can change the animation speed and the sleep time of the thread that calculates dijkstra, making it faster or slower.
-I've tried using big and complicated graphs and it works pretty good, you can try it yourself!
+I've tried using big and complicated graphs and it works quite well, you can try it yourself!
 
 
 ### Built With
